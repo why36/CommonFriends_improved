@@ -1,70 +1,41 @@
-# 金融大数据 作业6
+# 金融大数据 作业6 （自定义数据类型）
 ####  吴泓宇 181250155
 
 
 ## 设计思路
 
-对于基本数据类型的情况，我设计了两个MapReduce任务，其中第一个任务将读入的形如
+我们先来分析基本数据类型的不足之处，不难发现，最后输出的共同好友的key完全是通过字符串拼接而成的，这样的代码可复用性差，且不易维护，因此我决定将它封装为一个新的数据类型PersonPair
 
-\<person\>, \<friend1\>\<friend2\>…\<friendn\>的数据先通过第一个Mapper转化成
+在MapReduce中，要实现一个新的数据类型，需要实现以下内容：
 
-\<friend1\>,\<person>
+1. 定义私有变量
+2. setter，getter方法
+3. 无参有参构造器
+4. set()方法，帮助构造器初始化数据（Hadoop偏爱）
+5. hashCode()方法和equals()方法
+6. toString()方法
+7. implement Writable并实现write()方法readFilds()方法
+8. implement WritableComparable并实现compareTo()方法
 
-\<friend2>,\<person>
-
-...
-
-\<friendn>, \<person>的形式
+我的实现如下
 
 ![](figure/4.png)
 
-
-这之后，通过Hadoop的shuffle，到达Reducer的数据格式为
-
-\<friend1>, \<person1>\<person2>....
-
-\<friend2>, \<person3>...
-
-...
-
-针对第一个Job，我们的Reducer无需对value做多余处理，简单分隔即可，在此我们主要利用了Hadoop中shuffle的特性
-
 ![](figure/5.png)
 
-
-
-然后数据到达第二个Job，这个Job的Mapper将
-
-\<friend1>, \<person1>\<person2>\<person3>....
-
-转化为
-
-[\<person1>,\<person2>], \<friend1>
-
-[\<person1>,\<person3>], \<friend1>
-
-[\<person2>,\<person3>], \<friend1>
-
-...
+然后，将我们在基本数据类型的实现中做出相应修改：
 
 ![](figure/6.png)
-
-
-即，将每一个拥有friend n的person两两组合作为key，然后将该friend作为value输出
-
-因此，在Reducer端，经过shuffle之后，收到的数据格式为
-
-[\<person1>,\<person2>], \<friend1> \<friend2> \<friend3>...
-
-[\<person1>,\<person3>], \<friend1>...
-
-...
-
 ![](figure/7.png)
 
+就可以完成任务
 
-同样地，我们很好的利用了shuffle的特性，Reducer只要做一个简单的append输出即可。至此，任务已经完成。
+## 一些坑
 
+在实现自定义数据类型类的过程中，起初得到的输出的key直接打印出了PersonPair对象在Hadoop内部的id名称，而不是其对应的值。解决办法有二：
+
+- 一是自定义输出格式，重写OutputFormat
+- 二是，经过查阅相关资料发现，Reducer在打印输出时默认调用的是该类型的toString方法，而我之前并没有实现这个方法，所以直接打印出了id，而通过重写这个方法，我们可以无需自己再写一遍OutputFormat就可以达到自定义输出格式的效果
 
 ## 实验结果 
 
@@ -78,4 +49,4 @@ Web页面截图
 
 ## 总结
 
-在本次实验过程中，由于有实验5的基础，对Hadoop的各种API都有了比较熟练的运用，写起代码来也更加的得心应手，可以将更多思考放在算法的设计上。对于这个项目，得到解决思路的关键在于充分理解Hadoop中shuffle这一操作的作用，shuffle操作本身就带有“取共同”的特性，因此，只需要key，value对设计得当，巧妙利用shuffle特性即可完成。
+作为实验六的第二部分，练习了Mapreduce中自定义数据类型的方法，在一次次尝试与踩坑过程中也对MapReduce更底层的实现有了更真切的认识，知道了每一步输入输出在代码上的依赖分别是什么，收获很大。
