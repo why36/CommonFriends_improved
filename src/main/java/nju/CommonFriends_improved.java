@@ -6,11 +6,14 @@ import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.io.DataInput;
+import java.io.DataOutput;
 import java.util.List;
 import java.util.Set;
 import java.util.StringTokenizer;
 import java.util.regex.Pattern;
 import java.util.Arrays;
+import java.util.TreeSet;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
@@ -32,7 +35,55 @@ import org.apache.hadoop.mapreduce.lib.map.InverseMapper;
 import org.apache.hadoop.io.IntWritable.Comparator;
 import org.apache.hadoop.io.WritableComparable;
 
+
 public class CommonFriends_imporved {
+
+  public static class PersonPair implements WritableComparable{
+
+    private String first;
+    private String second;
+
+    public PersonPair(){
+
+    }
+
+    public PersonPair(String s1, String s2){
+      this.first = s1;
+      this.second = s2;
+    }
+    public String getFirst() {
+      return first;
+    }
+    public String getSecond(){
+      return second;
+    }
+
+    public void write(DataOutput out) throws IOException{
+      out.writeUTF(first);
+      out.writeUTF(second);
+    }
+
+    public void readFields(DataInput in) throws IOException{
+      this.first = in.readUTF();
+      this.second = in.readUTF();
+    }
+
+    public int compareTo(Object o){
+      return this.getFirst().compareTo(o.getFrist())!=0 ? this.getFirst().compareTo(o.getFrist()) : this.getSecond().compareTo(o.getSecond());
+    }
+
+    public boolean equals(Object o){
+      if(this == 0) return true;
+      if(o == null || getClass() != o.getClass()) return false;
+      PersonPair other = (PersonPair) o;
+      return this.getFirst()==other.getFirst() && this.getSecond()==other.getSecond();
+    }
+
+    public int hashcode(){
+      return Objects.hash(first, second);
+    }
+  }
+
 
   public static class CommonFriendsStep1Mapper
        extends Mapper<Object, Text, Text, Text>{
@@ -64,7 +115,7 @@ public class CommonFriends_imporved {
   }
 
   public static class CommonFriendsStep2Mapper
-       extends Mapper<Object, Text, Text, Text>{
+       extends Mapper<Object, Text, PersonPair, Text>{
 
     public void map(Object key, Text value, Context context
                     ) throws IOException, InterruptedException {
@@ -75,16 +126,17 @@ public class CommonFriends_imporved {
       Arrays.sort(masters);
       for(int i = 0; i<masters.length-1; ++i){
         for(int j = i+1;j<masters.length;++j){
-          context.write(new Text("[" + masters[i] + "，" + masters[j] + "]:"), new Text(friend));
+          PersonPair p = new PersonPair(masters[i],masters[j]);
+          context.write(p, new Text(friend));
         }
       }
     }
   }
 
   public static class CommonFriendsStep2Reducer
-       extends Reducer<Text,Text,Text,Text> {
+       extends Reducer<PersonPair,Text,PersonPair,Text> {
 
-    public void reduce(Text master, Iterable<Text> friends,
+    public void reduce(PersonPair master, Iterable<Text> friends,
                        Context context
                        ) throws IOException, InterruptedException {
       StringBuffer sBuffer = new StringBuffer();
@@ -121,7 +173,7 @@ public class CommonFriends_imporved {
         job2.setJarByClass(CommonFriends_imporved.class);
         job2.setMapperClass(CommonFriendsStep2Mapper.class);
         job2.setReducerClass(CommonFriendsStep2Reducer.class);
-        job2.setOutputKeyClass(Text.class);
+        job2.setOutputKeyClass(PersonPair.class);
         job2.setOutputValueClass(Text.class);
         FileInputFormat.addInputPath(job2, intermediatePath);
         FileOutputFormat.setOutputPath(job2, new Path(otherArgs[otherArgs.length - 1]));
