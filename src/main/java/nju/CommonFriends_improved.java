@@ -14,6 +14,7 @@ import java.util.StringTokenizer;
 import java.util.regex.Pattern;
 import java.util.Arrays;
 import java.util.TreeSet;
+import java.util.Objects;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
@@ -36,7 +37,7 @@ import org.apache.hadoop.io.IntWritable.Comparator;
 import org.apache.hadoop.io.WritableComparable;
 
 
-public class CommonFriends_imporved {
+public class CommonFriends_improved {
 
   public static class PersonPair implements WritableComparable{
 
@@ -44,7 +45,6 @@ public class CommonFriends_imporved {
     private String second;
 
     public PersonPair(){
-
     }
 
     public PersonPair(String s1, String s2){
@@ -69,11 +69,12 @@ public class CommonFriends_imporved {
     }
 
     public int compareTo(Object o){
-      return this.getFirst().compareTo(o.getFrist())!=0 ? this.getFirst().compareTo(o.getFrist()) : this.getSecond().compareTo(o.getSecond());
+      PersonPair other = (PersonPair) o;
+      return this.getFirst().compareTo(other.getFirst())!=0 ? this.getFirst().compareTo(other.getFirst()) : this.getSecond().compareTo(other.getSecond());
     }
 
     public boolean equals(Object o){
-      if(this == 0) return true;
+      if(this == o) return true;
       if(o == null || getClass() != o.getClass()) return false;
       PersonPair other = (PersonPair) o;
       return this.getFirst()==other.getFirst() && this.getSecond()==other.getSecond();
@@ -81,6 +82,10 @@ public class CommonFriends_imporved {
 
     public int hashcode(){
       return Objects.hash(first, second);
+    }
+
+    public String toString(){
+      return "["+first+", "+second+"]:";
     }
   }
 
@@ -155,7 +160,7 @@ public class CommonFriends_imporved {
             System.exit(2);
         }
         Job job1 = Job.getInstance(conf, "common friends step1");
-        job1.setJarByClass(CommonFriends_imporved.class);
+        job1.setJarByClass(CommonFriends_improved.class);
         job1.setMapperClass(CommonFriendsStep1Mapper.class);
         job1.setReducerClass(CommonFriendsStep1Reducer.class);
         job1.setOutputKeyClass(Text.class);
@@ -170,7 +175,7 @@ public class CommonFriends_imporved {
         System.out.println("开始第二个任务");
 
         Job job2 = Job.getInstance(conf, "common friends step2");
-        job2.setJarByClass(CommonFriends_imporved.class);
+        job2.setJarByClass(CommonFriends_improved.class);
         job2.setMapperClass(CommonFriendsStep2Mapper.class);
         job2.setReducerClass(CommonFriendsStep2Reducer.class);
         job2.setOutputKeyClass(PersonPair.class);
